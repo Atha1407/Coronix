@@ -19,3 +19,28 @@ export const analyzeSegment = async (file, pointA, pointB, catheterSize) => {
     }, 1000);
   });
 };
+
+/**
+ * Report generation frontend service interface.
+ * Prepared for future backend integration (POST /report).
+ *
+ * Expected future backend contract:
+ *   POST /report
+ *   Body: { reportPayload }
+ *   Response: application/pdf Blob
+ *
+ * Frontend phase: Simulates the network lifecycle, validates UI loading/success/error
+ * states, and sets up download handling without creating a fake client-side PDF.
+ */
+export const generateReport = async (reportPayload) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // Future backend will return:
+      // resolve({ success: true, blob: pdfBlob });
+      resolve({
+        success: true,
+        blob: null
+      });
+    }, 1200);
+  });
+};

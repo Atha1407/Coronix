@@ -1,19 +1,42 @@
 import React from 'react';
 import { HeartPulse, ChevronDown } from 'lucide-react';
 
-export default function Navbar() {
+const NAV_ITEMS = [
+  { id: 'analyze', label: 'Analyze' },
+  { id: 'how-it-works', label: 'How It Works' },
+  { id: 'about', label: 'About' },
+];
+
+export default function Navbar({ activePage = 'analyze', onNavigate }) {
   return (
     <nav className="h-16 border-b border-white/50 bg-white/40 backdrop-blur-md flex items-center justify-between px-6 shrink-0 z-10">
       <div className="flex items-center gap-8">
-        <div className="flex items-center gap-2 text-charcoal-blue">
+        {/* Logo — clicking always goes to Analyze */}
+        <button
+          onClick={() => onNavigate?.('analyze')}
+          className="flex items-center gap-2 text-charcoal-blue hover:opacity-80 transition-opacity"
+        >
           <HeartPulse className="w-6 h-6 text-teal" />
           <span className="font-semibold text-lg tracking-tight">CORONIX</span>
-        </div>
-        
+        </button>
+
         <div className="hidden md:flex gap-6 text-sm font-medium">
-          <button className="text-teal border-b-2 border-teal py-5">Analyze</button>
-          <button className="text-muted-teal hover:text-charcoal-blue transition-colors py-5">How It Works</button>
-          <button className="text-muted-teal hover:text-charcoal-blue transition-colors py-5">About</button>
+          {NAV_ITEMS.map((item) => {
+            const isActive = activePage === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => onNavigate?.(item.id)}
+                className={`py-5 transition-colors ${
+                  isActive
+                    ? 'text-teal border-b-2 border-teal'
+                    : 'text-muted-teal hover:text-charcoal-blue'
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 

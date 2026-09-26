@@ -1,11 +1,73 @@
-import React from 'react';
-import { Target, FileText, RotateCcw, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Target, FileText, RotateCcw, AlertCircle, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import StepProgress from '../components/StepProgress';
 import Disclaimer from '../components/Disclaimer';
 import AngiogramViewer from '../components/AngiogramViewer';
+import { generateReport } from '../services/api';
+
+const ALLOWED_SEVERITY_CATEGORIES = ['<20%', '20-50%', '50-70%', '70-90%', '90-98%', '99%', '100%'];
 
 export default function Results({ fileType, imageUrl, analysisResult, pointA, pointB, catheterSize, onAnalyzeAnother, onReset }) {
   const displayCatheterSize = catheterSize || analysisResult?.catheter_size;
+  const validSeverity = ALLOWED_SEVERITY_CATEGORIES.includes(analysisResult?.severity_category)
+    ? analysisResult.severity_category
+    : null;
+
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportStatus, setReportStatus] = useState(null); // null | 'success' | 'error'
+  const [reportErrorMessage, setReportErrorMessage] = useState('');
+
+  const handleGenerateReport = async () => {
+    if (isGeneratingReport) return;
+
+    setIsGeneratingReport(true);
+    setReportStatus(null);
+    setReportErrorMessage('');
+
+    // Conceptual report payload preserving all clinical parameters
+    const reportPayload = {
+      title: "CORONIX — Coronary Lesion Analysis Report",
+      case_id: analysisResult?.case_id || null,
+      segment_label: analysisResult?.segment_label || "LAD",
+      pointA: pointA ? { x: pointA.x, y: pointA.y } : null,
+      pointB: pointB ? { x: pointB.x, y: pointB.y } : null,
+      catheterSize: displayCatheterSize ? Number(displayCatheterSize) : null,
+      catheter_unit: "Fr",
+      lesion_detected: analysisResult?.lesion_detected ?? null,
+      lesion_bbox: analysisResult?.lesion_bbox || null,
+      lesion_location: analysisResult?.lesion_location || null,
+      severity_category: analysisResult?.severity_category || null,
+      confidence: analysisResult?.confidence ?? null,
+      overlay_image_base64: analysisResult?.overlay_image_base64 || null,
+      short_finding: analysisResult?.short_finding || (analysisResult?.lesion_detected ? `Lesion detected in ${analysisResult?.segment_label || 'segment'} with ${analysisResult?.severity_category || 'stenosis'}.` : "No significant lesion detected."),
+      disclaimer: "This tool is an AI-assisted research/hackathon prototype for demonstration purposes only. It is not a medical device, does not provide a diagnosis, and must not be used for clinical decision-making.",
+      model_version: analysisResult?.model_version || null
+    };
+
+    try {
+      const response = await generateReport(reportPayload);
+
+      // Future backend PDF integration: triggers download when real Blob is returned
+      if (response?.blob instanceof Blob) {
+        const url = window.URL.createObjectURL(response.blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'coronix-analysis-report.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
+
+      setReportStatus('success');
+    } catch (error) {
+      console.error("Report generation failed:", error);
+      setReportStatus('error');
+      setReportErrorMessage("Report could not be generated. Please try again.");
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
 
   if (!analysisResult) {
     return (
@@ -78,15 +140,15 @@ export default function Results({ fileType, imageUrl, analysisResult, pointA, po
                     {analysisResult.lesion_detected ? 'Detected' : 'Not Detected'}
                   </p>
                 </div>
-                {analysisResult.severity_category && analysisResult.lesion_detected && (
+                {validSeverity && analysisResult.lesion_detected && (
                   <div className="bg-teal/10 border border-teal/20 px-3 py-1.5 rounded-lg text-teal font-semibold text-sm">
-                    {analysisResult.severity_category}
+                    {validSeverity}
                   </div>
                 )}
               </div>
 
               {/* Confidence */}
-              {analysisResult.confidence != null && (
+              {analysisResult.confidence != null && !isNaN(analysisResult.confidence) && (
                 <div className="bg-white/60 p-4 rounded-xl border border-white/80 shadow-sm flex items-center justify-between">
                   <div>
                     <p className="text-xs font-semibold text-muted-teal uppercase tracking-wider mb-1">Confidence</p>
@@ -98,7 +160,7 @@ export default function Results({ fileType, imageUrl, analysisResult, pointA, po
               )}
 
               {/* Catheter Size */}
-              {displayCatheterSize && (
+              {displayCatheterSize != null && !isNaN(displayCatheterSize) && (
                 <div className="bg-white/60 p-4 rounded-xl border border-white/80 shadow-sm flex items-center justify-between">
                   <div>
                     <p className="text-xs font-semibold text-muted-teal uppercase tracking-wider mb-1">Catheter Size</p>
@@ -121,11 +183,13 @@ export default function Results({ fileType, imageUrl, analysisResult, pointA, po
                   <div className="w-4 h-4 rounded-full bg-teal border-2 border-white shadow-sm"></div>
                   <span className="font-medium text-sm text-charcoal-blue">Point A</span>
                 </div>
-                {pointA ? (
+                {pointA && pointA.x != null && pointA.y != null && !isNaN(pointA.x) && !isNaN(pointA.y) ? (
                   <span className="font-mono text-xs text-muted-teal bg-black/5 px-2 py-1 rounded">
                     x: {pointA.x}, y: {pointA.y}
                   </span>
-                ) : null}
+                ) : (
+                  <span className="text-xs text-muted-teal italic">Unavailable</span>
+                )}
               </div>
               
               {/* Point B Data */}
@@ -134,24 +198,69 @@ export default function Results({ fileType, imageUrl, analysisResult, pointA, po
                   <div className="w-4 h-4 rounded-full bg-[#D9A6A0] border-2 border-white shadow-sm"></div>
                   <span className="font-medium text-sm text-charcoal-blue">Point B</span>
                 </div>
-                {pointB ? (
+                {pointB && pointB.x != null && pointB.y != null && !isNaN(pointB.x) && !isNaN(pointB.y) ? (
                   <span className="font-mono text-xs text-muted-teal bg-black/5 px-2 py-1 rounded">
                     x: {pointB.x}, y: {pointB.y}
                   </span>
-                ) : null}
+                ) : (
+                  <span className="text-xs text-muted-teal italic">Unavailable</span>
+                )}
               </div>
             </div>
             
             <div className="mt-auto space-y-3">
-              <button className="w-full py-3.5 rounded-xl font-medium text-lg transition-all flex justify-center items-center gap-2 bg-teal text-white shadow-md hover:bg-charcoal-blue hover:shadow-lg">
-                <FileText className="w-5 h-5" />
-                Generate Report
-                <span>&rarr;</span>
+              {/* Success Notification */}
+              {reportStatus === 'success' && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2.5 text-xs text-emerald-800 font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Report generated successfully.</span>
+                </div>
+              )}
+
+              {/* Error Notification with Retry */}
+              {reportStatus === 'error' && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-between gap-2 text-xs text-red-700 font-medium">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+                    <span>{reportErrorMessage || "Report could not be generated. Please try again."}</span>
+                  </div>
+                  <button
+                    onClick={handleGenerateReport}
+                    className="text-xs font-semibold underline text-red-800 hover:text-red-950 cursor-pointer shrink-0"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {/* Primary Action: Generate Report */}
+              <button
+                onClick={handleGenerateReport}
+                disabled={isGeneratingReport}
+                className={`w-full py-3.5 rounded-xl font-medium text-lg transition-all flex justify-center items-center gap-2 ${
+                  isGeneratingReport
+                    ? 'bg-teal/70 text-white cursor-not-allowed'
+                    : 'bg-teal text-white shadow-md hover:bg-charcoal-blue hover:shadow-lg cursor-pointer'
+                }`}
+              >
+                {isGeneratingReport ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin text-white" />
+                    <span>Generating Report...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-5 h-5" />
+                    <span>Generate Report</span>
+                    <span>&rarr;</span>
+                  </>
+                )}
               </button>
               
+              {/* Secondary Action: Analyze Another Segment */}
               <button 
                 onClick={onAnalyzeAnother}
-                className="w-full py-3 rounded-xl font-medium text-base transition-colors flex justify-center items-center gap-2 bg-white text-muted-teal border border-border shadow-sm hover:text-charcoal-blue hover:border-charcoal-blue/30"
+                className="w-full py-3 rounded-xl font-medium text-base transition-colors flex justify-center items-center gap-2 bg-white text-muted-teal border border-border shadow-sm hover:text-charcoal-blue hover:border-charcoal-blue/30 cursor-pointer"
               >
                 Analyze Another Segment
               </button>
