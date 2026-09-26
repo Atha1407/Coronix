@@ -1,122 +1,84 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import React, { useState } from 'react';
+import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
+import Upload from './pages/Upload';
+import Analysis from './pages/Analysis';
+import Results from './pages/Results';
+import './index.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [file, setFile] = useState(null);
+  const [fileType, setFileType] = useState(null);
+  const [imageUrl, setImageUrl] = useState(null);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [points, setPoints] = useState({ pointA: null, pointB: null });
+  const [catheterSize, setCatheterSize] = useState(null);
+
+  const handleUploadComplete = (uploadedFile, type, url) => {
+    setFile(uploadedFile);
+    setFileType(type);
+    setImageUrl(url);
+    setCurrentStep(2);
+  };
+
+  const handleAnalysisComplete = (result, pointA, pointB, catSize) => {
+    setAnalysisResult(result);
+    setPoints({ pointA, pointB });
+    setCatheterSize(catSize);
+    setCurrentStep(3);
+  };
+
+  const handleAnalyzeAnother = () => {
+    setAnalysisResult(null);
+    setCurrentStep(2);
+  };
+
+  const resetUpload = () => {
+    setFile(null);
+    setFileType(null);
+    if (imageUrl) URL.revokeObjectURL(imageUrl);
+    setImageUrl(null);
+    setAnalysisResult(null);
+    setPoints({ pointA: null, pointB: null });
+    setCatheterSize(null);
+    setCurrentStep(1);
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    <div className="flex h-screen w-full bg-bright-snow overflow-hidden">
+      <Sidebar />
+      <div className="flex-1 flex flex-col min-w-0">
+        <Navbar />
+        <main className="flex-1 overflow-auto p-6 md:p-8">
+          {currentStep === 1 && (
+            <Upload onUploadComplete={handleUploadComplete} />
+          )}
+          {currentStep === 2 && (
+            <Analysis 
+              file={file} 
+              fileType={fileType} 
+              imageUrl={imageUrl} 
+              onReset={resetUpload}
+              onAnalysisComplete={handleAnalysisComplete}
+            />
+          )}
+          {currentStep === 3 && (
+            <Results
+              fileType={fileType}
+              imageUrl={imageUrl}
+              analysisResult={analysisResult}
+              pointA={points.pointA}
+              pointB={points.pointB}
+              catheterSize={catheterSize}
+              onAnalyzeAnother={handleAnalyzeAnother}
+              onReset={resetUpload}
+            />
+          )}
+        </main>
+      </div>
+    </div>
+  );
 }
 
-export default App
+export default App;
