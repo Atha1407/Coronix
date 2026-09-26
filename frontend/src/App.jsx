@@ -12,6 +12,7 @@ function App() {
   const [file, setFile] = useState(null);
   const [fileType, setFileType] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
+  const [imageSource, setImageSource] = useState(null); // 'image' | 'dicom_upload' | 'dicom_connected'
   const [frameIndex, setFrameIndex] = useState(0);
   const [dicomMetadata, setDicomMetadata] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
@@ -26,10 +27,39 @@ function App() {
     setActivePage(page);
   };
 
-  const handleUploadComplete = (uploadedFile, type, url, selectedFrame = 0, meta = null) => {
+  const handleUploadComplete = (
+    uploadedFile,
+    type,
+    url,
+    sourceOrFrame = null,
+    maybeFrameOrMeta = null,
+    maybeMeta = null
+  ) => {
+    let source = type === 'dicom' ? 'dicom_upload' : 'image';
+    let selectedFrame = 0;
+    let meta = null;
+
+    if (typeof sourceOrFrame === 'string') {
+      source = sourceOrFrame;
+      if (typeof maybeFrameOrMeta === 'number') {
+        selectedFrame = maybeFrameOrMeta;
+        meta = maybeMeta;
+      } else if (typeof maybeFrameOrMeta === 'object') {
+        meta = maybeFrameOrMeta;
+      }
+    } else if (typeof sourceOrFrame === 'number') {
+      selectedFrame = sourceOrFrame;
+      meta = maybeFrameOrMeta;
+    } else if (typeof sourceOrFrame === 'object' && sourceOrFrame !== null) {
+      source = sourceOrFrame.source || source;
+      selectedFrame = sourceOrFrame.frameIndex || 0;
+      meta = sourceOrFrame.metadata || null;
+    }
+
     setFile(uploadedFile);
     setFileType(type);
     setImageUrl(url);
+    setImageSource(source);
     setFrameIndex(selectedFrame);
     setDicomMetadata(meta);
     setCurrentStep(2);
@@ -57,6 +87,7 @@ function App() {
       URL.revokeObjectURL(imageUrl);
     }
     setImageUrl(null);
+    setImageSource(null);
     setFrameIndex(0);
     setDicomMetadata(null);
     setAnalysisResult(null);
@@ -84,6 +115,7 @@ function App() {
           file={file}
           fileType={fileType}
           imageUrl={imageUrl}
+          imageSource={imageSource}
           initialCatheterSize={catheterSize}
           frameIndex={frameIndex}
           dicomMetadata={dicomMetadata}
@@ -97,6 +129,7 @@ function App() {
         <Results
           fileType={fileType}
           imageUrl={imageUrl}
+          imageSource={imageSource}
           analysisResult={analysisResult}
           pointA={points.pointA}
           pointB={points.pointB}

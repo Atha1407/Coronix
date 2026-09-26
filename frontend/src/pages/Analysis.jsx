@@ -1,14 +1,21 @@
 import React, { useState, useMemo } from 'react';
-import { Target, RotateCcw } from 'lucide-react';
+import { Target, RotateCcw, PlugZap } from 'lucide-react';
 import StepProgress from '../components/StepProgress';
 import Disclaimer from '../components/Disclaimer';
 import AngiogramViewer from '../components/AngiogramViewer';
 import { analyzeSegment } from '../services/api';
 
+const SOURCE_LABELS = {
+  image:           'Uploaded Image',
+  dicom_upload:    'Uploaded DICOM',
+  dicom_connected: 'Connected DICOM',
+};
+
 export default function Analysis({
   file,
   fileType,
   imageUrl,
+  imageSource,
   initialCatheterSize,
   frameIndex = 0,
   dicomMetadata = null,
@@ -82,7 +89,15 @@ export default function Analysis({
   return (
     <div className="max-w-7xl mx-auto flex flex-col h-full">
       <div className="flex justify-between items-center mb-6">
-        <StepProgress currentStep={2} />
+        <div className="flex items-center gap-3">
+          <StepProgress currentStep={2} />
+          {imageSource && SOURCE_LABELS[imageSource] && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal bg-teal/10 border border-teal/20 px-3 py-1 rounded-full">
+              <PlugZap className="w-3 h-3" />
+              {SOURCE_LABELS[imageSource]}
+            </span>
+          )}
+        </div>
         <button 
           onClick={handleStartOver}
           className="text-sm font-medium text-muted-teal hover:text-charcoal-blue transition-colors px-4 py-2 bg-white rounded-lg border border-border shadow-sm flex items-center gap-2"
