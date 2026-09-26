@@ -5,10 +5,10 @@ import Disclaimer from '../components/Disclaimer';
 import AngiogramViewer from '../components/AngiogramViewer';
 import { analyzeSegment } from '../services/api';
 
-export default function Analysis({ file, fileType, imageUrl, onReset, onAnalysisComplete }) {
+export default function Analysis({ file, fileType, imageUrl, initialCatheterSize, onReset, onAnalysisComplete }) {
   const [pointA, setPointA] = useState(null);
   const [pointB, setPointB] = useState(null);
-  const [catheterSize, setCatheterSize] = useState('');
+  const [catheterSize, setCatheterSize] = useState(initialCatheterSize ? initialCatheterSize.toString() : '');
   const [catheterTouched, setCatheterTouched] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 

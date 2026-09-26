@@ -118,14 +118,6 @@ export default function Upload({ onUploadComplete }) {
           <div className="px-4 py-2 bg-white rounded-full border border-border shadow-sm text-sm text-charcoal-blue font-medium">
             PNG, JPG or DICOM • Single frame
           </div>
-          
-          <input 
-            type="file" 
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept="image/png, image/jpeg, .jpg, .dcm, application/dicom"
-            className="hidden"
-          />
         </div>
       ) : (
         <div className="glass-card rounded-2xl p-8 mb-8 border border-white/50">
@@ -211,6 +203,14 @@ export default function Upload({ onUploadComplete }) {
           <span>&rarr;</span>
         </button>
       </div>
+
+      <input 
+        type="file" 
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/png, image/jpeg, .jpg, .dcm, application/dicom"
+        className="hidden"
+      />
     </div>
   );
 }
