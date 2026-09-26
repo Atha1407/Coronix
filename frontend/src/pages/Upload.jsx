@@ -22,7 +22,7 @@ function SourceBadge({ source }) {
     dicom_connected: 'Connected DICOM',
   };
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal bg-teal/10 border border-teal/20 px-3 py-1 rounded-full">
+    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal bg-teal/10 border border-teal/20 px-3 py-1 rounded-full whitespace-nowrap shrink-0">
       <span className="w-1.5 h-1.5 rounded-full bg-teal" />
       Source: {labels[source] || source}
     </span>
@@ -410,7 +410,7 @@ export default function Upload({ onUploadComplete }) {
 
   // ── layout ────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-4xl mx-auto flex flex-col h-full">
+    <div className="max-w-4xl mx-auto flex flex-col min-h-full pb-12">
       <StepProgress currentStep={1} />
 
       <div className="mb-8">
@@ -432,7 +432,7 @@ export default function Upload({ onUploadComplete }) {
 
       {/* Action footer */}
       {importMode !== 'choose' && (
-        <div className="mt-auto pt-8 flex justify-end">
+        <div className="mt-auto pt-8 pb-8 flex justify-end">
           <button
             onClick={handleContinue}
             disabled={!canContinue}

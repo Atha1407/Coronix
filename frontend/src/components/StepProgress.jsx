@@ -1,7 +1,7 @@
 import React from 'react';
 import { Check } from 'lucide-react';
 
-export default function StepProgress({ currentStep }) {
+export default function StepProgress({ currentStep, className = "mb-8" }) {
   const steps = [
     { num: 1, label: 'Upload Angiogram' },
     { num: 2, label: 'Select Two Points' },
@@ -9,7 +9,7 @@ export default function StepProgress({ currentStep }) {
   ];
 
   return (
-    <div className="flex items-center gap-4 mb-8">
+    <div className={`flex items-center gap-4 ${className}`}>
       {steps.map((step, index) => {
         const isCompleted = currentStep > step.num;
         const isCurrent = currentStep === step.num;
@@ -17,9 +17,9 @@ export default function StepProgress({ currentStep }) {
 
         return (
           <React.Fragment key={step.num}>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors shrink-0 ${
                   isCompleted
                     ? 'bg-teal text-white'
                     : isCurrent
@@ -30,7 +30,7 @@ export default function StepProgress({ currentStep }) {
                 {isCompleted ? <Check className="w-4 h-4" /> : step.num}
               </div>
               <span
-                className={`text-sm font-medium transition-colors ${
+                className={`text-sm font-medium transition-colors whitespace-nowrap ${
                   isCompleted || isCurrent ? 'text-charcoal-blue' : 'text-muted-teal'
                 }`}
               >
@@ -39,7 +39,7 @@ export default function StepProgress({ currentStep }) {
             </div>
             
             {index < steps.length - 1 && (
-              <div className="w-12 h-px bg-muted-teal/20"></div>
+              <div className="w-8 sm:w-12 h-px bg-muted-teal/20 shrink-0"></div>
             )}
           </React.Fragment>
         );
