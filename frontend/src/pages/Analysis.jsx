@@ -5,7 +5,16 @@ import Disclaimer from '../components/Disclaimer';
 import AngiogramViewer from '../components/AngiogramViewer';
 import { analyzeSegment } from '../services/api';
 
-export default function Analysis({ file, fileType, imageUrl, initialCatheterSize, onReset, onAnalysisComplete }) {
+export default function Analysis({
+  file,
+  fileType,
+  imageUrl,
+  initialCatheterSize,
+  frameIndex = 0,
+  dicomMetadata = null,
+  onReset,
+  onAnalysisComplete
+}) {
   const [pointA, setPointA] = useState(null);
   const [pointB, setPointB] = useState(null);
   const [catheterSize, setCatheterSize] = useState(initialCatheterSize ? initialCatheterSize.toString() : '');
@@ -36,7 +45,7 @@ export default function Analysis({ file, fileType, imageUrl, initialCatheterSize
     setIsAnalyzing(true);
     try {
       const parsedCatheter = Number(catheterSize);
-      const result = await analyzeSegment(file, pointA, pointB, parsedCatheter);
+      const result = await analyzeSegment(file, pointA, pointB, parsedCatheter, frameIndex);
       const enrichedResult = {
         ...result,
         catheter_size: parsedCatheter
@@ -233,7 +242,7 @@ export default function Analysis({ file, fileType, imageUrl, initialCatheterSize
             <div className="mt-auto pt-2">
               <button
                 onClick={handleAnalyze}
-                disabled={!pointA || !pointB || !isCatheterValid || isAnalyzing || fileType === 'dicom'}
+                disabled={!pointA || !pointB || !isCatheterValid || isAnalyzing}
                 className={`w-full py-3.5 rounded-xl font-medium text-base transition-all flex justify-center items-center gap-2 ${
                   pointA && pointB && isCatheterValid && !isAnalyzing
                     ? 'bg-teal text-white shadow-md hover:bg-charcoal-blue hover:shadow-lg cursor-pointer'

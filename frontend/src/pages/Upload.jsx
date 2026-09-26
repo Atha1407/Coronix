@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, File, Image as ImageIcon, X } from 'lucide-react';
+import { UploadCloud, File, Image as ImageIcon, X, ChevronLeft, ChevronRight, Layers, Info } from 'lucide-react';
 import StepProgress from '../components/StepProgress';
+import { uploadDicom } from '../services/api';
 
 export default function Upload({ onUploadComplete }) {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -9,10 +10,16 @@ export default function Upload({ onUploadComplete }) {
   const [error, setError] = useState('');
   const [isHovering, setIsHovering] = useState(false);
   const [isImageResolving, setIsImageResolving] = useState(false);
+  const [isDicomLoading, setIsDicomLoading] = useState(false);
   
+  // DICOM Multi-frame and Metadata state
+  const [dicomMetadata, setDicomMetadata] = useState(null);
+  const [totalFrames, setTotalFrames] = useState(1);
+  const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
+
   const fileInputRef = useRef(null);
 
-  const processFile = (file) => {
+  const processFile = async (file) => {
     setError('');
     
     if (!file) return;
@@ -21,7 +28,7 @@ export default function Upload({ onUploadComplete }) {
     const isDicom = file.name.toLowerCase().endsWith('.dcm') || file.type === 'application/dicom';
     
     if (!isImage && !isDicom) {
-      setError('Unsupported file format. Please upload a PNG, JPG, or DICOM file.');
+      setError('Unsupported file format. Please upload a PNG, JPG, or DICOM (.dcm) file.');
       return;
     }
     
@@ -31,13 +38,45 @@ export default function Upload({ onUploadComplete }) {
     if (isImage) {
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
+      setDicomMetadata(null);
+      setTotalFrames(1);
+      setCurrentFrameIndex(0);
       setIsImageResolving(true);
-      // Let the CSS animation play out
       setTimeout(() => {
         setIsImageResolving(false);
-      }, 1000);
+      }, 800);
     } else {
-      setPreviewUrl(null);
+      // Ingest DICOM via backend
+      setIsDicomLoading(true);
+      try {
+        const data = await uploadDicom(file, 0);
+        setPreviewUrl(data.image_base64);
+        setDicomMetadata(data.metadata);
+        setTotalFrames(data.total_frames || 1);
+        setCurrentFrameIndex(0);
+      } catch (err) {
+        console.error("DICOM ingestion error:", err);
+        setError(`Failed to read DICOM file: ${err.message}`);
+        setPreviewUrl(null);
+      } finally {
+        setIsDicomLoading(false);
+      }
+    }
+  };
+
+  const handleFrameChange = async (newIndex) => {
+    if (!selectedFile || fileType !== 'dicom') return;
+    if (newIndex < 0 || newIndex >= totalFrames) return;
+    
+    setIsDicomLoading(true);
+    try {
+      const data = await uploadDicom(selectedFile, newIndex);
+      setPreviewUrl(data.image_base64);
+      setCurrentFrameIndex(newIndex);
+    } catch (err) {
+      setError(`Failed to extract frame ${newIndex}: ${err.message}`);
+    } finally {
+      setIsDicomLoading(false);
     }
   };
 
@@ -68,18 +107,21 @@ export default function Upload({ onUploadComplete }) {
   const handleRemove = () => {
     setSelectedFile(null);
     setFileType(null);
-    if (previewUrl) {
+    if (previewUrl && !previewUrl.startsWith('data:')) {
       URL.revokeObjectURL(previewUrl);
     }
     setPreviewUrl(null);
+    setDicomMetadata(null);
+    setTotalFrames(1);
+    setCurrentFrameIndex(0);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
   const handleContinue = () => {
-    if (selectedFile) {
-      onUploadComplete(selectedFile, fileType, previewUrl);
+    if (selectedFile && previewUrl) {
+      onUploadComplete(selectedFile, fileType, previewUrl, currentFrameIndex, dicomMetadata);
     }
   };
 
@@ -97,7 +139,7 @@ export default function Upload({ onUploadComplete }) {
       
       <div className="mb-8">
         <h1 className="text-3xl font-semibold text-charcoal-blue mb-2">Upload Coronary Angiogram</h1>
-        <p className="text-muted-teal text-lg">Upload a clear coronary angiography frame to begin segment analysis.</p>
+        <p className="text-muted-teal text-lg">Upload a DICOM (.dcm) run or single frame angiography image to begin segment analysis.</p>
       </div>
       
       {!selectedFile ? (
@@ -116,13 +158,20 @@ export default function Upload({ onUploadComplete }) {
           <h3 className="text-xl font-medium text-charcoal-blue mb-2">Drop your angiogram here</h3>
           <p className="text-muted-teal mb-6">or browse from your computer</p>
           <div className="px-4 py-2 bg-white rounded-full border border-border shadow-sm text-sm text-charcoal-blue font-medium">
-            PNG, JPG or DICOM • Single frame
+            DICOM (.dcm) or PNG, JPG • Single & Multi-frame supported
           </div>
         </div>
       ) : (
         <div className="glass-card rounded-2xl p-8 mb-8 border border-white/50">
           <div className="flex justify-between items-start mb-6">
-            <h3 className="text-lg font-medium text-charcoal-blue">File Selected</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-medium text-charcoal-blue">File Selected</h3>
+              {fileType === 'dicom' && (
+                <span className="bg-teal/10 text-teal text-xs font-semibold px-2 py-0.5 rounded-full border border-teal/20">
+                  DICOM Ingested
+                </span>
+              )}
+            </div>
             <div className="flex gap-3">
               <button 
                 onClick={() => fileInputRef.current?.click()}
@@ -140,46 +189,98 @@ export default function Upload({ onUploadComplete }) {
             </div>
           </div>
           
-          {fileType === 'image' && previewUrl ? (
-            <div className="bg-charcoal-blue/5 rounded-xl border border-border p-4 flex gap-6">
-              <div className="w-48 h-48 bg-black rounded-lg overflow-hidden shrink-0 flex items-center justify-center relative">
+          {/* Preview Card */}
+          <div className="bg-charcoal-blue/5 rounded-xl border border-border p-6 flex flex-col md:flex-row gap-6">
+            {/* Image Preview Box */}
+            <div className="w-56 h-56 bg-black rounded-lg overflow-hidden shrink-0 flex items-center justify-center relative border border-black/10">
+              {isDicomLoading ? (
+                <div className="flex flex-col items-center justify-center text-teal gap-2">
+                  <div className="w-8 h-8 border-3 border-teal/30 border-t-teal rounded-full animate-spin"></div>
+                  <span className="text-xs text-white/80">Decoding Frame...</span>
+                </div>
+              ) : previewUrl ? (
                 <img 
                   src={previewUrl} 
                   alt="Angiogram preview" 
                   className={`w-full h-full object-contain ${isImageResolving ? 'reveal-animation' : ''}`}
                 />
-              </div>
-              <div className="flex flex-col justify-center">
-                <div className="flex items-center gap-2 mb-2">
-                  <ImageIcon className="w-5 h-5 text-teal" />
-                  <span className="font-semibold text-charcoal-blue text-lg truncate max-w-sm">{selectedFile.name}</span>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-muted-teal p-4 text-center">
+                  <File className="w-10 h-10 text-muted-teal/60 mb-2" />
+                  <span className="text-xs">No preview available</span>
                 </div>
-                <div className="text-muted-teal text-sm space-y-1">
-                  <p>Size: {formatFileSize(selectedFile.size)}</p>
-                  <p>Type: {selectedFile.type || 'Image'}</p>
-                </div>
-                <div className="mt-4 inline-flex items-center gap-2 bg-teal/10 text-teal px-3 py-1.5 rounded-full text-sm font-medium">
-                  <div className="w-2 h-2 rounded-full bg-teal"></div>
-                  Ready for analysis
-                </div>
-              </div>
+              )}
             </div>
-          ) : (
-            <div className="bg-charcoal-blue/5 rounded-xl border border-border p-8 flex items-center gap-6">
-              <div className="w-20 h-24 bg-white border border-border rounded-lg shadow-sm flex flex-col items-center justify-center text-teal shrink-0">
-                <File className="w-8 h-8 mb-2" />
-                <span className="text-xs font-bold uppercase">DICOM</span>
-              </div>
+
+            {/* Metadata & Controls */}
+            <div className="flex flex-col justify-between flex-1 min-w-0">
               <div>
-                <h4 className="font-semibold text-charcoal-blue text-lg mb-1">{selectedFile.name}</h4>
-                <p className="text-muted-teal text-sm mb-4">Size: {formatFileSize(selectedFile.size)}</p>
-                <div className="inline-flex items-center gap-2 bg-teal/10 text-teal px-3 py-1.5 rounded-full text-sm font-medium">
-                  <div className="w-2 h-2 rounded-full bg-teal animate-pulse"></div>
-                  DICOM file ready for analysis
+                <div className="flex items-center gap-2 mb-2">
+                  {fileType === 'dicom' ? (
+                    <File className="w-5 h-5 text-teal shrink-0" />
+                  ) : (
+                    <ImageIcon className="w-5 h-5 text-teal shrink-0" />
+                  )}
+                  <span className="font-semibold text-charcoal-blue text-lg truncate max-w-md">
+                    {selectedFile.name}
+                  </span>
+                </div>
+
+                <div className="text-muted-teal text-sm space-y-1 mb-4">
+                  <p>File Size: {formatFileSize(selectedFile.size)}</p>
+                  <p>Format: {fileType === 'dicom' ? 'DICOM Digital Angiography' : (selectedFile.type || 'Standard Image')}</p>
+                  {dicomMetadata && (
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs bg-white/60 p-3 rounded-lg border border-border/60">
+                      <div><strong className="text-charcoal-blue">Modality:</strong> {dicomMetadata.Modality || 'XA'}</div>
+                      <div><strong className="text-charcoal-blue">Matrix:</strong> {dicomMetadata.Rows || '—'} × {dicomMetadata.Columns || '—'}</div>
+                      <div><strong className="text-charcoal-blue">Total Frames:</strong> {totalFrames}</div>
+                      <div><strong className="text-charcoal-blue">Study:</strong> {dicomMetadata.StudyDescription || 'Coronary Angiogram'}</div>
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* Multi-frame DICOM Frame Selector */}
+              {fileType === 'dicom' && totalFrames > 1 && (
+                <div className="bg-white/80 p-3 rounded-xl border border-teal/20 shadow-xs mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-teal" />
+                    <span className="text-xs font-semibold text-charcoal-blue">
+                      Frame {currentFrameIndex + 1} of {totalFrames}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={currentFrameIndex <= 0 || isDicomLoading}
+                      onClick={() => handleFrameChange(currentFrameIndex - 1)}
+                      className="p-1 rounded-md bg-white border border-border text-charcoal-blue hover:bg-teal/10 disabled:opacity-40 disabled:hover:bg-white"
+                      title="Previous Frame"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="font-mono text-xs text-charcoal-blue px-2 font-medium">
+                      idx: {currentFrameIndex}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={currentFrameIndex >= totalFrames - 1 || isDicomLoading}
+                      onClick={() => handleFrameChange(currentFrameIndex + 1)}
+                      className="p-1 rounded-md bg-white border border-border text-charcoal-blue hover:bg-teal/10 disabled:opacity-40 disabled:hover:bg-white"
+                      title="Next Frame"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="inline-flex items-center gap-2 bg-teal/10 text-teal px-3 py-1.5 rounded-full text-sm font-medium w-fit">
+                <div className="w-2 h-2 rounded-full bg-teal"></div>
+                {previewUrl ? 'Ready for Point Selection' : 'Processing file...'}
+              </div>
             </div>
-          )}
+          </div>
         </div>
       )}
       
@@ -192,10 +293,10 @@ export default function Upload({ onUploadComplete }) {
       <div className="mt-auto pt-8 flex justify-end">
         <button
           onClick={handleContinue}
-          disabled={!selectedFile}
+          disabled={!selectedFile || !previewUrl || isDicomLoading}
           className={`px-8 py-3 rounded-xl font-medium text-lg transition-all flex items-center gap-2 ${
-            selectedFile 
-              ? 'bg-teal text-white shadow-md hover:bg-charcoal-blue hover:shadow-lg' 
+            selectedFile && previewUrl && !isDicomLoading
+              ? 'bg-teal text-white shadow-md hover:bg-charcoal-blue hover:shadow-lg cursor-pointer' 
               : 'bg-muted-teal/20 text-muted-teal cursor-not-allowed'
           }`}
         >
@@ -208,7 +309,7 @@ export default function Upload({ onUploadComplete }) {
         type="file" 
         ref={fileInputRef}
         onChange={handleFileChange}
-        accept="image/png, image/jpeg, .jpg, .dcm, application/dicom"
+        accept=".dcm, application/dicom, image/png, image/jpeg, .jpg"
         className="hidden"
       />
     </div>

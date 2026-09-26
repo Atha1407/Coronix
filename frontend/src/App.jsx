@@ -12,6 +12,8 @@ function App() {
   const [file, setFile] = useState(null);
   const [fileType, setFileType] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
+  const [frameIndex, setFrameIndex] = useState(0);
+  const [dicomMetadata, setDicomMetadata] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [points, setPoints] = useState({ pointA: null, pointB: null });
@@ -24,10 +26,12 @@ function App() {
     setActivePage(page);
   };
 
-  const handleUploadComplete = (uploadedFile, type, url) => {
+  const handleUploadComplete = (uploadedFile, type, url, selectedFrame = 0, meta = null) => {
     setFile(uploadedFile);
     setFileType(type);
     setImageUrl(url);
+    setFrameIndex(selectedFrame);
+    setDicomMetadata(meta);
     setCurrentStep(2);
     setActivePage('analyze');
   };
@@ -49,8 +53,12 @@ function App() {
   const resetUpload = () => {
     setFile(null);
     setFileType(null);
-    if (imageUrl) URL.revokeObjectURL(imageUrl);
+    if (imageUrl && !imageUrl.startsWith('data:')) {
+      URL.revokeObjectURL(imageUrl);
+    }
     setImageUrl(null);
+    setFrameIndex(0);
+    setDicomMetadata(null);
     setAnalysisResult(null);
     setPoints({ pointA: null, pointB: null });
     setCatheterSize(null);
@@ -77,6 +85,8 @@ function App() {
           fileType={fileType}
           imageUrl={imageUrl}
           initialCatheterSize={catheterSize}
+          frameIndex={frameIndex}
+          dicomMetadata={dicomMetadata}
           onReset={resetUpload}
           onAnalysisComplete={handleAnalysisComplete}
         />

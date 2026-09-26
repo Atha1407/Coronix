@@ -223,7 +223,9 @@ export default function AngiogramViewer({
   const magScale = 2.5;
 
   const displayImage = isResultsMode && analysisResult?.overlay_image_base64 
-    ? `data:image/png;base64,${analysisResult.overlay_image_base64}` 
+    ? (analysisResult.overlay_image_base64.startsWith('data:') 
+        ? analysisResult.overlay_image_base64 
+        : `data:image/png;base64,${analysisResult.overlay_image_base64}`)
     : imageUrl;
 
   return (
