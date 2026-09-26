@@ -92,23 +92,23 @@ export default function Results({ fileType, imageUrl, imageSource, analysisResul
 
   return (
     <div className="max-w-7xl mx-auto flex flex-col h-full">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3">
-          <StepProgress currentStep={3} />
+      <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
+        <StepProgress currentStep={3} className="mb-0" />
+        <div className="flex items-center gap-3 shrink-0">
           {imageSource && SOURCE_LABELS[imageSource] && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal bg-teal/10 border border-teal/20 px-3 py-1 rounded-full">
-              <PlugZap className="w-3 h-3" />
-              {SOURCE_LABELS[imageSource]}
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal bg-teal/10 border border-teal/20 px-3.5 py-1.5 rounded-full whitespace-nowrap shrink-0 shadow-xs">
+              <PlugZap className="w-3.5 h-3.5 shrink-0" />
+              <span>{SOURCE_LABELS[imageSource]}</span>
             </span>
           )}
+          <button 
+            onClick={onReset}
+            className="text-sm font-medium text-muted-teal hover:text-charcoal-blue transition-colors px-4 py-2 bg-white rounded-lg border border-border shadow-sm flex items-center gap-2 whitespace-nowrap shrink-0 hover:bg-slate-50"
+          >
+            <RotateCcw className="w-4 h-4 shrink-0" />
+            <span>Start Over</span>
+          </button>
         </div>
-        <button 
-          onClick={onReset}
-          className="text-sm font-medium text-muted-teal hover:text-charcoal-blue transition-colors px-4 py-2 bg-white rounded-lg border border-border shadow-sm flex items-center gap-2"
-        >
-          <RotateCcw className="w-4 h-4" />
-          Start Over
-        </button>
       </div>
       
       <div className="mb-6">
@@ -193,7 +193,7 @@ export default function Results({ fileType, imageUrl, imageSource, analysisResul
               {/* Point A Data */}
               <div className="flex items-center justify-between p-3 bg-white/60 rounded-xl border border-white/80 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full bg-teal border-2 border-white shadow-sm"></div>
+                  <div className="w-4 h-4 rounded-full bg-[#00E5FF] border-2 border-white shadow-xs shrink-0 ring-1 ring-[#00E5FF]/40"></div>
                   <span className="font-medium text-sm text-charcoal-blue">Point A</span>
                 </div>
                 {pointA && pointA.x != null && pointA.y != null && !isNaN(pointA.x) && !isNaN(pointA.y) ? (
@@ -208,7 +208,7 @@ export default function Results({ fileType, imageUrl, imageSource, analysisResul
               {/* Point B Data */}
               <div className="flex items-center justify-between p-3 bg-white/60 rounded-xl border border-white/80 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full bg-[#D9A6A0] border-2 border-white shadow-sm"></div>
+                  <div className="w-4 h-4 rounded-full bg-[#FF3366] border-2 border-white shadow-xs shrink-0 ring-1 ring-[#FF3366]/40"></div>
                   <span className="font-medium text-sm text-charcoal-blue">Point B</span>
                 </div>
                 {pointB && pointB.x != null && pointB.y != null && !isNaN(pointB.x) && !isNaN(pointB.y) ? (
