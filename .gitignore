@@ -1,0 +1,27 @@
+# Python bytecode and caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Environments
+.venv/
+venv/
+env/
+
+# IDE and OS files
+.DS_Store
+Thumbs.db
+
+# Large ML files
+ml/models/*.pth
+ml/models/predictions/
+test_images/
+.git_broken/
+ml/__pycache__/
+ml/models/predictions/
+ml/models/*.pth
+ml/data/
+ml/models/*.png
+.gitignore.backup
