@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+
+
 # Add backend, opencv, and project root to sys.path
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
